@@ -8,6 +8,7 @@ from urllib.request import urlretrieve
 from html.parser import HTMLParser
 import time
 import datetime
+import re
 
 # Ordner zum speichern der Bilder anlegen
 if not os.path.exists('bilder'):
@@ -21,6 +22,8 @@ def get_date_string():
 
 
 counter = 0
+needless_urls = ["#"]
+scrip_urls = ["javascript"]
 
 
 def get_filename(ending):
@@ -42,6 +45,23 @@ class MyParser(HTMLParser):
     def handle_starttag(self, tag, attrs):
         for index, value in attrs:
             if index == "href" or index == "src":
+
+                # Find all valid urls
+                if index == "href":
+                    # at first search with regex
+                    match = re.search(r'[\'"]?([^\'" >]+)', value)
+                    if match:
+                        global needless_urls
+                        global scrip_urls
+                        if any(value in s for s in needless_urls):
+                            print("forbidden url")
+                        elif any(value.startswith(x) for x in scrip_urls):
+                            print("stats with")
+                        else:
+                            global listboxShowFoundLinks
+                            listboxShowFoundLinks.insert(0, value)
+
+                # Find and download all pictures
                 if str(value).endswith(".jpg") or str(value).endswith(".gif") or str(value).endswith(".png"):
 
                     if str(value).startswith("/"):
@@ -49,6 +69,7 @@ class MyParser(HTMLParser):
                     else:
                         bildname = value
 
+                    # Save JPGs
                     if bildname.endswith('.jpg'):
                         try:
                             jpg_name = 'bilder/' + get_filename(".jpg")
@@ -57,6 +78,7 @@ class MyParser(HTMLParser):
                         except:
                             print("Fehler jpg")
 
+                    # Save GIFs
                     elif bildname.endswith('.gif'):
                         try:
                             gif_name = 'bilder/' + get_filename(".gif")
@@ -65,6 +87,7 @@ class MyParser(HTMLParser):
                         except:
                             print("Fehler gif")
 
+                    # Save PNGs
                     elif bildname.endswith('.png'):
                         try:
                             png_name = 'bilder/' + get_filename(".png")
@@ -92,14 +115,21 @@ root = Tk()
 root.title = "Homepage Parser"
 
 # url eingabe
-Label(root, text="URL").grid(row=1, column=0)
-urlEingabe = Entry(root)
+Label(root, text="Current URL").grid(row=1, column=0)
+urlEingabe = Entry(root, width=40)
 urlEingabe.insert(0, "www.wetter.com/deutschland/mannheim/DE0006670.html")
 urlEingabe.grid(row=1, column=1)
 
 # Button "durchsuchen"
 buttonSucheStarten = Button(root, text="Durchsuchen", command=lambda: button_suchen_click())
 buttonSucheStarten.grid(row=1, column=2)
+
+# Label "found urls"
+Label(root, text="Found URLs").grid(row=2, column=0)
+
+# Listbox showing Links found on homepage
+listboxShowFoundLinks = Listbox(root, selectmode="single", width=40, height=15)
+listboxShowFoundLinks.grid(row=2, column=1)
 
 # fenster anzeigen
 root.mainloop()
